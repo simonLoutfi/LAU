@@ -10,8 +10,14 @@ function Signup() {
 
   const handleSignup = async (e) => {
     e.preventDefault();
+    const passwordValid = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(password);
+
+    if (!passwordValid) {
+      setMessage("Password must be at least 8 characters long and include uppercase, lowercase, and a number.");
+      return;
+    }
     try {
-      const res = await axios.post('/signup', { email, password });
+      const res = await axios.post('http://localhost:5000/signup', { email, password });
       setMessage(`${res.data.message}`);
     } catch (err) {
       if (err.response && err.response.data && err.response.data.message) {

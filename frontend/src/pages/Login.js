@@ -12,8 +12,9 @@ function Login() {
         e.preventDefault();
 
         try{
-            const res = await axios.post('/login',{email,password});
+            const res = await axios.post('http://localhost:5000/login',{email,password});
             setMessage(`Success! Welcome ${res.data.message}`);
+            navigate('/dashboard');
         }catch(err){
             if (err.response) {
                 setMessage(`Error: ${err.response.data.message}`);
