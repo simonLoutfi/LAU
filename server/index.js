@@ -3,6 +3,7 @@ const cors = require('cors');
 const mysql = require('mysql2');
 const bcrypt = require('bcrypt');
 
+
 const app = express();
 const PORT = 5000;
 
@@ -12,9 +13,9 @@ app.use(express.json());
 // Connect to MySQL
 const db = mysql.createConnection({
   host: 'localhost',
-  user: 'root',
-  password: '', // update if needed
-  database: 'lau'
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD, // update if needed
+  database: process.env.DB_NAME
 });
 
 db.connect(err => {
@@ -67,6 +68,20 @@ app.post('/login', (req, res) => {
     }
   });
 });
+
+const fetchInfo = require('./fetchInfo');
+
+app.post('/info', async (req, res) => {
+  const { diseaseName } = req.body;
+  try {
+    const info = await fetchInfo(diseaseName);
+    res.json({ message: info });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Failed to fetch information.' });
+  }
+});
+
 
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
