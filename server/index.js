@@ -2,10 +2,12 @@ const express = require('express');
 const cors = require('cors');
 const mysql = require('mysql2');
 const bcrypt = require('bcrypt');
-
+const jwt = require('jsonwebtoken');
+require('dotenv').config();
 
 const app = express();
 const PORT = 5000;
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'; // put this in your .env file
 
 app.use(cors());
 app.use(express.json());
@@ -14,8 +16,8 @@ app.use(express.json());
 const db = mysql.createConnection({
   host: 'localhost',
   user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD, // update if needed
-  database: process.env.DB_NAME
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
 });
 
 db.connect(err => {
@@ -26,11 +28,16 @@ db.connect(err => {
   }
 });
 
-// Register new user (with hashing)
+// Generate JWT token
+function generateToken(user) {
+  return jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '1h' });
+}
+
+// Register new user (with auto login + token)
 app.post('/signup', async (req, res) => {
   const { email, password } = req.body;
   try {
-    const hashedPassword = await bcrypt.hash(password, 10); // saltRounds = 10
+    const hashedPassword = await bcrypt.hash(password, 10);
     const sql = 'INSERT INTO users (email, password) VALUES (?, ?)';
     db.query(sql, [email, hashedPassword], (err, result) => {
       if (err) {
@@ -39,14 +46,17 @@ app.post('/signup', async (req, res) => {
         }
         return res.status(500).json({ message: 'Server error.' });
       }
-      res.json({ message: 'User registered successfully.' });
+
+      const user = { id: result.insertId, email };
+      const token = generateToken(user);
+      res.json({ message: 'User registered and logged in successfully.', token });
     });
   } catch (err) {
     res.status(500).json({ message: 'Signup error.' });
   }
 });
 
-// Login route (with hash comparison)
+// Login route (with token)
 app.post('/login', (req, res) => {
   const { email, password } = req.body;
 
@@ -62,13 +72,15 @@ app.post('/login', (req, res) => {
     const match = await bcrypt.compare(password, user.password);
 
     if (match) {
-      res.json({ message: 'Login successful!' });
+      const token = generateToken(user);
+      res.json({ message: 'Login successful!', token });
     } else {
       res.status(401).json({ message: 'Invalid email or password.' });
     }
   });
 });
 
+// Info route
 const fetchInfo = require('./fetchInfo');
 
 app.post('/info', async (req, res) => {
@@ -81,7 +93,6 @@ app.post('/info', async (req, res) => {
     res.status(500).json({ message: 'Failed to fetch information.' });
   }
 });
-
 
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
